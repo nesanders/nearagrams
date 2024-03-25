@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Python Terminal in Browser</title>
+</head>
+<body>
+    <button onclick="runPython()">Run Python Script</button>
+    <pre id="output"></pre>
+
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.18.1/full/pyodide.js"></script>
+    <script>
+        async function loadPyodideAndRunCode() {
+            let pyodide = await loadPyodide();
+            window.runPython = async () => {
+                try {
+                    // Fetch the Python script
+                    const response = await fetch('neargrams.py');
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    const code = await response.text();
+
+                    // Run the fetched Python code
+                    let output = await pyodide.runPythonAsync(code);
+                    document.getElementById('output').textContent = output;
+                } catch (err) {
+                    document.getElementById('output').textContent = `Error: ${err.message}`;
+                }
+            };
+        }
+
+        loadPyodideAndRunCode();
+    </script>
+</body>
+</html>
