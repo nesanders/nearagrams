@@ -14,7 +14,7 @@ USED_WORDS = []
 
 # Original source
 #WORD_LIST_URL = "http://web.mit.edu/freebsd/head/share/dict/web2"
-WORD_LIST_URL = "https://raw.githubusercontent.com/nesanders/neargrams/main/word_list_alpha.text"
+WORD_LIST_URL = "https://nesanders.github.io/neargrams/word_list_alpha.text"
 WORD_LIST_FILENAME = 'word_list_alpha.text'
 DICTIONARY = None
 INTRO_TEXT = """
