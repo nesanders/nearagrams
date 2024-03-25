@@ -7,12 +7,13 @@
     <button onclick="runPython()">Run Python Script</button>
     <pre id="output"></pre>
 
-    <script src="https://cdn.jsdelivr.net/pyodide/v0.18.1/full/pyodide.js"></script>
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.25.0/full/pyodide.js"></script>
     <script>
         async function loadPyodideAndRunCode() {
             let pyodide = await loadPyodide();
             window.runPython = async () => {
                 try {
+                    await pyodide.loadPackage("requests")
                     // Fetch the Python script
                     const response = await fetch('neargrams.py');
                     if (!response.ok) {
