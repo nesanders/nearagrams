@@ -12,10 +12,22 @@ from typing import Literal
 
 USED_WORDS = []
 
-# Load words from a file
 WORD_LIST_URL = "http://web.mit.edu/freebsd/head/share/dict/web2"
 WORD_LIST_FILENAME = 'word_list_alpha.text'
 DICTIONARY = None
+INTRO_TEXT = """
+Welcome to Nearagrams.
+
+You will be shown a word. 
+You need to enter a Nearagam: an English word that reuses all the letters from the last word, but has either one more or one fewer letter.
+You will take turns back and forth with the computer until no more Nearagams are left.
+
+You cannot reuse words and all words must be at least 3 letters.
+Your score will be determined by how many words you find and how many letters they use.
+
+Good luck!
+"""
+
 def load_words() -> list[str]:
     """Download a word list from the Internet and cache it to disk.
     """
@@ -110,18 +122,41 @@ def get_difficulty() -> Literal[1, 2, 3]:
     
     return int(difficulty)
 
-INTRO_TEXT = """
-Welcome to Nearagrams.
+def check_give_up(word: str, potential_words: list[str]) -> bool:
+    if word == 'q':
+        print(f"You gave up. Remaining Nearagrams were {sorted(potential_words)}")
+        return True
 
-You will be shown a word. 
-You need to enter a Nearagam: an English word that reuses all the letters from the last word, but has either one more or one fewer letter.
-You will take turns back and forth with the computer until no more Nearagams are left.
+def check_used_word(word: str) -> bool:
+    if word in USED_WORDS:
+        print("This word has already been used. Please try another.")
+        return True
 
-You cannot reuse words and all words must be at least 3 letters.
-Your score will be determined by how many words you find and how many letters they use.
+def check_too_short(word: str) -> bool:
+    if len(word) < 3:
+        print("Words must be at least 3 letters.")
+        return True
 
-Good luck!
-"""
+def check_wrong_length(word: str, current_word: str) -> bool:
+    if abs(len(word) - len(current_word)) != 1:
+        print("Word must have one more or fewer letters than the original.")
+        return True
+
+def check_not_recognized(word: str) -> bool:
+    if word not in DICTIONARY:
+        print("Word is not in dictionary; pick another.")
+        return True
+
+def check_all_redos(player_word: str, current_word: str) -> bool:
+    """Run all checks that result in a `continue`.
+    """
+    return (
+        check_used_word(player_word) or 
+        check_too_short(player_word) or
+        check_wrong_length(player_word, current_word) or
+        check_not_recognized(player_word)
+    )
+
 # Main game loop
 def play_game(processed_words: dict[str, list[str]]):
     print(INTRO_TEXT)
@@ -139,27 +174,14 @@ def play_game(processed_words: dict[str, list[str]]):
         if len(potential_words) == 0:
             print("Game over! There are no more Nearagrams left.")
             break
+        
         print(f"There are {len(potential_words)} Nearagrams.")
         player_word = input("Enter an anagram (enter 'q' to quit): ").strip().lower()
         
-        if player_word == 'q':
-            print(f"You gave up. Remaining Nearagrams were {sorted(potential_words)}")
+        if check_give_up(player_word, potential_words):
             break
     
-        if player_word in USED_WORDS:
-            print("This word has already been used. Please try another.")
-            continue
-        
-        if len(player_word) < 3:
-            print("Words must be at least 3 letters.")
-            continue
-        
-        if abs(len(player_word) - len(current_word)) != 1:
-            print("Word must have one more or fewer letters than the original.")
-            continue
-        
-        if player_word not in DICTIONARY:
-            print("Word is not in dictionary; pick another.")
+        if check_all_redos(player_word, current_word):
             continue
         
         if player_word in potential_words:
@@ -171,7 +193,7 @@ def play_game(processed_words: dict[str, list[str]]):
             USED_WORDS.append(current_word)
             potential_words = get_anagrams(current_word)
         else:
-            print("Incorrect or invalid word. Try again.")
+            print("Not a valid Neargram. Try again.")
     
     print(f"Game over. Your score: {score}")
 
