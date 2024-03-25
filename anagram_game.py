@@ -3,117 +3,147 @@
 Python code to play a game with a command line, textual interface. In the game, an English word is randomly proposed (initially 4 letters). The player's job is to suggest an anagram of that word, also a valid English word, which must have either one more or one fewer letter than the original. The computer then suggests an anagram of that word with the same rules (one or fewer letter). Gameplay proceeds like this in turns. The user's score is counted based on how many turns they survive. There are three difficulty levels offered at the start of the game; the computer player chooses words that decrease or increase the player's likelihood of success based on the level.
 """
 
+from functools import lru_cache
 import os
 import random
 import requests
+from collections import defaultdict, Counter
+from typing import Literal
 
 USED_WORDS = []
 
 # Load words from a file
 WORD_LIST_URL = "http://web.mit.edu/freebsd/head/share/dict/web2"
 WORD_LIST_FILENAME = 'word_list_alpha.text'
-def load_words():
-    # Check if the word list file already exists
+DICTIONARY = None
+def load_words() -> list[str]:
+    """Download a word list from the Internet and cache it to disk.
+    """
     if not os.path.exists(WORD_LIST_FILENAME):
-        # Download the word list and save it locally
         print("Downloading word list...")
         response = requests.get(WORD_LIST_URL)
-        # Ensure the response was successful
         if response.status_code == 200:
             with open(WORD_LIST_FILENAME, "w") as file:
                 file.write(response.text)
         else:
             print("Failed to download the word list.")
             return []
-    
-    # Load words from the local file
-    with open(WORD_LIST_FILENAME, "r") as file:
-        words = file.read().split()
-    
-    return [word.strip() for word in words if word.strip() and starts_with_non_capital(word)]
 
-def starts_with_non_capital(s):
+    with open(WORD_LIST_FILENAME, "r") as file:
+        all_words = file.read().split()
+
+    return [word.strip().lower() for word in all_words if word.strip() and not word.strip()[0].isupper()]
+
+def preprocess_words(words: list[str]) -> dict[str, list[str]]:
+    """Preprocess words into a dict by length and letter counts."""
+    processed = defaultdict(list)
+    for word in words:
+        processed[len(word)].append(word)
+    return processed
+
+def starts_with_non_capital(s: str) -> bool:
     return not s.split()[0][0].isupper()
 
-def words_by_length(words, length):
-    return [word for word in words if len(word) == length]
 
-def get_anagrams(base_word, words, length_diff) -> list[str]:
-    base_letters = sorted(base_word)
+PROCESSED_WORDS = None
+@lru_cache
+def get_anagrams(base_word: str) -> list[str]:
+    """Returns a list of all words in PROCESSED_WORDS that are anagrams of the `base_word` with either
+    one more or one fewer letter.
+    
+    Words must be at least 3 letters in lenth.
+    """
+    base_counter = Counter(base_word)
+    potential_lengths = (
+        [len(base_word) + 1] 
+        if len(base_word) == 3
+        else [len(base_word) - 1, len(base_word) + 1]
+    )
     potential_anagrams = []
-    for word in words:
-        if len(word) != len(base_word) + length_diff:
-            continue
-        word_letters = sorted(word)
-        # For words with one more letter, check if base_letters are in word_letters
-        if length_diff == 1 and all(base_letters.count(letter) <= word_letters.count(letter) for letter in base_letters):
-            potential_anagrams.append(word)
-        # For words with one fewer letter, check if word_letters are in base_letters
-        elif length_diff == -1 and all(word_letters.count(letter) <= base_letters.count(letter) for letter in word_letters):
-            potential_anagrams.append(word)
+
+    for length in potential_lengths:
+        for word in PROCESSED_WORDS[length]:
+            counter = Counter(word)
+            if word in USED_WORDS:
+                continue
+            if length < len(base_word):
+                if not (counter - base_counter):
+                    potential_anagrams.append(word)
+            else:
+                # This is the case where the new word is 1 letter longer than the original
+                if (counter - base_counter).total() == 1:
+                    potential_anagrams.append(word)
+    
     return potential_anagrams
 
-def choose_next_word(current_word, words, difficulty) -> str:
-    # Find anagrams with one more or one fewer letter, but at least 3
-    potential_words_plus = get_anagrams(current_word, words, 1)
-    potential_words_minus = get_anagrams(current_word, words, -1) if len(current_word) > 3 else []
-    potential_words = potential_words_plus + potential_words_minus
-    potential_words = [word for word in potential_words if word not in USED_WORDS]
-    
-    # Group by the number of available next-round anagrams
-    word_anagram_counts = {word: len(get_anagrams(word, words, 1) + get_anagrams(word, words, -1)) for word in potential_words}
-    
-    # Choose next word based on difficulty
-    if difficulty == 1:  # Easy: Choose words with the most available anagrams
-        max_anagrams = max(word_anagram_counts.values())
-        choices = [word for word, count in word_anagram_counts.items() if count == max_anagrams]
-    elif difficulty == 3:  # Hard: Choose words with the fewest available anagrams
-        min_anagrams = min(word_anagram_counts.values())
-        choices = [word for word, count in word_anagram_counts.items() if count == min_anagrams]
-    else:  # Medium: Random choice
-        choices = list(word_anagram_counts.keys())
-    
+def choose_next_word(current_word: dict[str, list[str]], difficulty: Literal[1, 2, 3]) -> str:
+    potential_words = get_anagrams(current_word)
+    if not potential_words:
+        return None
+
+    if difficulty == 1:
+        # Easy: prioritize words with more potential anagrams
+        word_difficulties = [(word, len(get_anagrams(word))) for word in potential_words]
+        word_difficulties.sort(key=lambda x: -x[1])
+    elif difficulty == 3:
+        # Hard: prioritize words with fewer potential anagrams
+        word_difficulties = [(word, len(get_anagrams(word))) for word in potential_words]
+        word_difficulties.sort(key=lambda x: x[1])
+    else:
+        # Medium: random choice
+        word_difficulties = [(word, 0) for word in potential_words]
+
+    choices = [word for word, _ in word_difficulties if word not in USED_WORDS]
     return random.choice(choices) if choices else None
 
-def get_all_potential_anagrams(current_word: str, words: list[str]) -> list[str]:
-    all_words = get_anagrams(current_word, words, 1) + (get_anagrams(current_word, words, -1) if len(current_word) > 3 else [])
-    return [word for word in all_words if word not in USED_WORDS]
-
+def get_difficulty() -> Literal[1, 2, 3]:
+    """Have the user enter a difficulty level
+    """
+    print("Difficulty levels: 1. Easy, 2. Medium, 3. Hard")
+    difficulty = input("Choose difficulty (1-3): ")
+    
+    if not isinstance(difficulty, int) or difficulty not in [1, 2, 3]:
+        print("Invalid difficulty. Defaulting to Medium.")
+        difficulty = 2
+    
+    print(f"Proceeding with difficulty level={difficulty}")
+    
+    return int(difficulty)
 
 INTRO_TEXT = """
-Welcome to the Anagram Game.
+Welcome to Nearagrams.
 
 You will be shown a word. 
-You need to enter a new, English word that reuses all the letters from the last word, but has either one more or one fewer letter.
+You need to enter a Nearagam: an English word that reuses all the letters from the last word, but has either one more or one fewer letter.
+You will take turns back and forth with the computer until no more Nearagams are left.
+
 You cannot reuse words and all words must be at least 3 letters.
 Your score will be determined by how many words you find and how many letters they use.
 
 Good luck!
 """
 # Main game loop
-def play_game(words):
+def play_game(processed_words: dict[str, list[str]]):
     print(INTRO_TEXT)
-    print("Difficulty levels: 1. Easy, 2. Medium, 3. Hard")
-    difficulty = int(input("Choose difficulty (1-3): "))
-    
-    if difficulty not in [1, 2, 3]:
-        print("Invalid difficulty. Defaulting to Medium.")
-        difficulty = 2
+    difficulty = get_difficulty()
     
     # Adjust difficulty
     current_length = 4 if difficulty == 1 else 5 if difficulty == 2 else 6
     
-    current_word = random.choice(words_by_length(words, current_length))
-    potential_words = get_all_potential_anagrams(current_word, words)
+    current_word = random.choice(processed_words[current_length])
+    potential_words = get_anagrams(current_word)
     score = 0
 
     while True:
-        print(f"Current word: {current_word}")
-        print(f"There are {len(potential_words)} potential answers.")
+        print(f"\nCurrent word: {current_word}")
+        if len(potential_words) == 0:
+            print("Game over! There are no more Nearagrams left.")
+            break
+        print(f"There are {len(potential_words)} Nearagrams.")
         player_word = input("Enter an anagram (enter 'q' to quit): ").strip().lower()
         
         if player_word == 'q':
-            print(f"You gave up. Acceptable words would have been {sorted(potential_words)}")
+            print(f"You gave up. Remaining Nearagrams were {sorted(potential_words)}")
             break
     
         if player_word in USED_WORDS:
@@ -124,18 +154,28 @@ def play_game(words):
             print("Words must be at least 3 letters.")
             continue
         
+        if abs(len(player_word) - len(current_word)) != 1:
+            print("Word must have one more or fewer letters than the original.")
+            continue
+        
+        if player_word not in DICTIONARY:
+            print("Word is not in dictionary; pick another.")
+            continue
+        
         if player_word in potential_words:
             print("Correct!")
             score += len(player_word)
             print(f"Your score is {score}\n")
             USED_WORDS.append(player_word)
-            current_word = choose_next_word(player_word, words, difficulty)
+            current_word = choose_next_word(player_word, difficulty)
             USED_WORDS.append(current_word)
-            potential_words = get_all_potential_anagrams(current_word, words)
+            potential_words = get_anagrams(current_word)
         else:
-            print("Incorrect or invalid word. Try again.\n")
+            print("Incorrect or invalid word. Try again.")
     
     print(f"Game over. Your score: {score}")
 
-words = load_words()
-play_game(words)
+if __name__ == "__main__":
+    DICTIONARY = load_words()
+    PROCESSED_WORDS = preprocess_words(DICTIONARY)
+    play_game(PROCESSED_WORDS)
