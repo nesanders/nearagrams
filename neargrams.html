@@ -9,6 +9,11 @@
 
     <script src="https://cdn.jsdelivr.net/pyodide/v0.25.0/full/pyodide.js"></script>
     <script>
+        // See https://github.com/pyodide/pyodide/issues/758#issuecomment-696418449
+        function input_fixed(text) {
+            return prompt(text);
+        };
+        
         async function loadPyodideAndRunCode() {
             let pyodide = await loadPyodide();
             window.runPython = async () => {
@@ -22,10 +27,7 @@
                     const code = await response.text();
                     
                     
-                    // See https://github.com/pyodide/pyodide/issues/758#issuecomment-696418449
-                    function input_fixed(text) {
-                        return prompt(text);
-                    };
+ 
 
                     pyodide.runPythonAsync(`
                     from js import input_fixed
