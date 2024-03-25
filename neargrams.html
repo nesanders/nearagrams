@@ -20,6 +20,22 @@
                         throw new Error(`HTTP error! status: ${response.status}`);
                     }
                     const code = await response.text();
+                    
+                    
+                    // See https://github.com/pyodide/pyodide/issues/758#issuecomment-696418449
+                    function input_fixed(text) {
+                        return prompt(text);
+                    };
+
+                    languagePluginLoader.then(() => {
+                    pyodide.runPythonAsync(`
+                    from js import input_fixed
+                    input = input_fixed
+                    __builtins__.input = input_fixed
+                    `);
+                    });
+                    
+                    
 
                     // Run the fetched Python code
                     let output = await pyodide.runPythonAsync(code);
