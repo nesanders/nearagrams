@@ -41,6 +41,12 @@
         button:hover {
             background-color: #0056b3;
         }
+        .difficulty-button {
+            padding: 10px 20px;
+        }
+        .selected {
+            background-color: #f57c00; /* Highlight selected difficulty */
+        }
         #gameArea {
             margin-top: 20px;
             background-color: #fff;
@@ -91,8 +97,11 @@
         </ul>
     </div>
     <div>
-        <label for="difficulty">Choose difficulty (1: easy, 2: medium, 3: hard): </label>
-        <input type="number" id="difficulty" min="1" max="3" value="2">
+    <div>
+        <label>Choose difficulty: </label>
+        <button class="difficulty-button" id="easy">Easy</button>
+        <button class="difficulty-button selected" id="medium">Medium</button>
+        <button class="difficulty-button" id="hard">Hard</button>
         <button id="startGame">Start Game</button>
     </div>
     <div id="gameArea" style="display:none;">
@@ -110,7 +119,18 @@
         let currentWord = '';
         let score = 0;
         let isGameOver = false;
-
+        let difficulty = 2; // Default difficulty is medium
+        
+        
+        document.querySelectorAll('.difficulty-button').forEach(button => {
+            button.addEventListener('click', function() {
+                document.querySelectorAll('.difficulty-button').forEach(btn => btn.classList.remove('selected'));
+                this.classList.add('selected');
+                // Assigning difficulty based on button ID
+                difficulty = this.id === 'easy' ? 1 : this.id === 'hard' ? 3 : 2;
+            });
+        });
+        
         document.getElementById('startGame').addEventListener('click', function() {
             const difficultyInput = document.getElementById('difficulty');
             const gameArea = document.getElementById('gameArea');
@@ -123,7 +143,7 @@
                         .map(word => word.toLowerCase());
                     processedWords = preprocessWords(dictionary);
                     gameArea.style.display = 'block';
-                    startGame(parseInt(difficultyInput.value));
+                    startGame(difficulty);
                 })
                 .catch(error => {
                     console.error("Failed to download the word list.", error);
@@ -140,7 +160,7 @@
             }
 
             if (playerInput === 'q') {
-                messages.innerText = `You gave up. Game Over. The reamining Nearagrams were: ${getAnagrams(currentWord).join(', ')}`;
+                messages.innerHTML = `You gave up. Game Over. The remaining Nearagrams were: <ul><li>${getAnagrams(currentWord).join('</li><li>')}</li></ul>`;
                 isGameOver = true;
                 return;
             }
