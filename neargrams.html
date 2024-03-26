@@ -276,8 +276,6 @@
         }
 
         function nextRound() {
-            const difficultyElement = document.getElementById('difficulty');
-            const difficulty = parseInt(difficultyElement.value, 10);
             usedWords.push(currentWord);
             currentWord = chooseNextWord(difficulty);
             document.getElementById('currentWord').innerText = `Current word: ${currentWord}`;
