@@ -124,6 +124,7 @@
         <input type="text" id="playerInput">
         <button id="submitWord">Submit</button>
         <div id="messages"></div>
+        <button id="giveUpButton">Give Up</button>
     </div>
     <script>
         let dictionary = [];
@@ -172,11 +173,19 @@
                 return; // Exit the function, preventing further execution
             }
 
-            if (playerInput === 'q') {
+            document.getElementById('giveUpButton').addEventListener('click', function() {
+                const messages = document.getElementById('messages');
+                
+                // Check if the game is already over to prevent multiple triggers
+                if (isGameOver) {
+                    console.log("The game is over. No more actions allowed.");
+                    return;
+                }
+
+                // Mimic the 'q' input functionality
                 messages.innerHTML = `You gave up. Game Over. The remaining Nearagrams were: <ul><li>${getAnagrams(currentWord).join('</li><li>')}</li></ul>`;
                 isGameOver = true;
-                return;
-            }
+            });
 
             if (!checkAllRedos(playerInput)) {
                 if (getAnagrams(currentWord).includes(playerInput)) {
@@ -305,6 +314,7 @@
         }
 
         function startGame(difficulty) {
+            isGameOver = false;
             document.getElementById('messages').innerText = '';
             score = 0;
             usedWords = [];
@@ -317,6 +327,7 @@
             document.getElementById('startGame').innerText = "Restart";
             let potentialWords = getAnagrams(currentWord);
             document.getElementById('nearagramCount').innerText = `Nearagrams Available: ${potentialWords.length}`;
+            document.getElementById('playerInput').value = '';
         }
 
         function selectRandomWord(length) {
