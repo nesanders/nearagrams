@@ -147,7 +147,7 @@
         document.getElementById('startGame').addEventListener('click', function() {
             const difficultyInput = document.getElementById('difficulty');
             const gameArea = document.getElementById('gameArea');
-            const wordListUrl = "https://nesanders.github.io/neargrams/word_list_alpha.text";
+            const wordListUrl = "https://nesanders.github.io/nearagrams/word_list_alpha.text";
 
             axios.get(wordListUrl)
                 .then(response => {

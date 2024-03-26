@@ -14,7 +14,7 @@ USED_WORDS = []
 
 # Original source
 #WORD_LIST_URL = "http://web.mit.edu/freebsd/head/share/dict/web2"
-WORD_LIST_URL = "https://nesanders.github.io/neargrams/word_list_alpha.text"
+WORD_LIST_URL = "https://nesanders.github.io/nearagrams/word_list_alpha.text"
 WORD_LIST_FILENAME = 'word_list_alpha.text'
 DICTIONARY = None
 INTRO_TEXT = """
@@ -193,7 +193,7 @@ def game_round(player_word, difficulty, current_length, current_word, potential_
         USED_WORDS.append(current_word)
         potential_words = get_anagrams(current_word)
     else:
-        print("Not a valid Neargram. Try again.")
+        print("Not a valid Nearagram. Try again.")
     
     if len(potential_words) == 0:
         print("Game over! There are no more Nearagrams left.")
