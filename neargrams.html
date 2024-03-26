@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Nearagrams Game</title>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <style>
         body {
@@ -11,6 +12,18 @@
             color: #333;
             padding: 20px;
             line-height: 1.6;
+        }
+        /* Logo Styles */
+        .nearagrams-logo {
+            font-family: 'Fredoka One', cursive;
+            font-size: 64px;
+            background: linear-gradient(to right, #007bff, #28a745 50%, #f57c00);
+            -webkit-background-clip: text;
+            color: transparent;
+            user-select: none;
+            text-shadow: 4px 4px 10px rgba(0,0,0,0.2);
+            text-align: center; /* Center the logo */
+            margin-bottom: 20px; /* Space between the logo and the game intro */
         }
         h1 {
             color: #333;
@@ -87,7 +100,7 @@
 </head>
 <body>
     <div id="introText">
-        <h2>Let's Play Nearagrams!</h2>
+        <div class="nearagrams-logo">Nearagrams</div>
         <ul>
             <li>You'll see a word on your screen.</li>
             <li>Craft a <strong>Nearagram</strong>: a new English word with the same letters as the given word, except having one more or one fewer letter.</li>
