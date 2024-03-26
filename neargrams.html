@@ -80,12 +80,11 @@
     </style>
 </head>
 <body>
-    <h1>Welcome to Nearagrams</h1>
     <div id="introText">
         <h2>Let's Play Nearagrams!</h2>
         <ul>
             <li>You'll see a word on your screen.</li>
-            <li>Your challenge? Craft a <strong>Nearagram</strong>: a new English word by rearranging all the letters from the given word. You can either use one more or one fewer letter.</li>
+            <li>Craft a <strong>Nearagram</strong>: a new English word with the same letters as the given word, except having one more or one fewer letter.</li>
             <li>Take turns against the computer, and let's see who runs out of words first!</li>
             <li>Remember, no repeats, and all words must be at least 3 letters long.</li>
             <li>Your score depends on the number and length of the words you find.</li>
@@ -141,7 +140,7 @@
             }
 
             if (playerInput === 'q') {
-                messages.innerText = "You gave up. Game Over.";
+                messages.innerText = `You gave up. Game Over. The reamining Nearagrams were: ${getAnagrams(currentWord).join(', ')}`;
                 isGameOver = true;
                 return;
             }
