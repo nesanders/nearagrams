@@ -1,52 +1,269 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Neargrams</title>
+    <meta charset="UTF-8">
+    <title>Nearagrams Game</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
 </head>
 <body>
-    <button onclick="runPython()">Run Neargams</button>
-    <pre id="output"></pre>
-
-    <script src="https://cdn.jsdelivr.net/pyodide/v0.25.0/full/pyodide.js"></script>
+    <h1>Welcome to Nearagrams</h1>
+    <div id="introText"></div>
+    <div>
+        <label for="difficulty">Choose difficulty (1-3): </label>
+        <input type="number" id="difficulty" min="1" max="3" value="2">
+        <button id="startGame">Start Game</button>
+    </div>
+    <div id="gameArea" style="display:none;">
+        <div id="currentWord"></div>
+        <div id="score">Score: 0</div>
+        <input type="text" id="playerInput">
+        <button id="submitWord">Submit</button>
+        <div id="messages"></div>
+    </div>
     <script>
-        // See https://github.com/pyodide/pyodide/issues/758#issuecomment-696418449
-        function input_fixed(text) {
-            return prompt(text);
-        };
-        
-        async function loadPyodideAndRunCode() {
-            let pyodide = await loadPyodide();
-            window.runPython = async () => {
-                try {
-                    await pyodide.loadPackage("requests")
-                    // Fetch the Python script
-                    const response = await fetch('neargrams.py');
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
-                    const code = await response.text();
-                    
-                    
- 
+        let dictionary = [];
+        let processedWords = {};
+        let usedWords = [];
+        let currentWord = '';
+        let score = 0;
+        let isGameOver = false;
 
-                    pyodide.runPythonAsync(`
-                    from js import input_fixed
-                    input = input_fixed
-                    __builtins__.input = input_fixed
-                    `);
-                    
-                    
+        document.getElementById('introText').innerText = `Welcome to Nearagrams.
 
-                    // Run the fetched Python code
-                    let output = await pyodide.runPythonAsync(code);
-                    document.getElementById('output').textContent = output;
-                } catch (err) {
-                    document.getElementById('output').textContent = `Error: ${err.message}`;
+You will be shown a word. 
+You need to enter a Nearagam: an English word that reuses all the letters from the last word, but has either one more or one fewer letter.
+You will take turns back and forth with the computer until no more Nearagams are left.
+
+You cannot reuse words and all words must be at least 3 letters.
+Your score will be determined by how many words you find and how many letters they use.
+
+Good luck!`;
+
+        document.getElementById('startGame').addEventListener('click', function() {
+            const difficultyInput = document.getElementById('difficulty');
+            const gameArea = document.getElementById('gameArea');
+            const wordListUrl = "https://nesanders.github.io/neargrams/word_list_alpha.text";
+
+            axios.get(wordListUrl)
+                .then(response => {
+                    dictionary = response.data.split(/\r?\n/)
+                        .filter(word => word && !word[0].match(/[A-Z]/))
+                        .map(word => word.toLowerCase());
+                    processedWords = preprocessWords(dictionary);
+                    gameArea.style.display = 'block';
+                    startGame(parseInt(difficultyInput.value));
+                })
+                .catch(error => {
+                    console.error("Failed to download the word list.", error);
+                });
+        });
+
+        document.getElementById('submitWord').addEventListener('click', function() {
+            const playerInput = document.getElementById('playerInput').value.trim().toLowerCase();
+            const messages = document.getElementById('messages');
+            
+            if (isGameOver) {
+                console.log("The game is over. No more submissions allowed.");
+                return; // Exit the function, preventing further execution
+            }
+
+            if (playerInput === 'q') {
+                messages.innerText = "You gave up. Game Over.";
+                isGameOver = true;
+                return;
+            }
+
+            if (!checkAllRedos(playerInput)) {
+                if (getAnagrams(currentWord).includes(playerInput)) {
+                    usedWords.push(playerInput);
+                    score += playerInput.length;
+                    document.getElementById('score').innerText = `Score: ${score}`;
+                    messages.innerText = "Correct!";
+                    nextRound();
+                } else {
+                    messages.innerText = "Not a valid Nearagram. Try again.";
                 }
-            };
+            }
+        });
+
+        function preprocessWords(words) {
+            let processed = {};
+            words.forEach(word => {
+                const length = word.length;
+                if (!processed[length]) processed[length] = [];
+                processed[length].push(word);
+            });
+            return processed;
         }
 
-        loadPyodideAndRunCode();
+        function getAnagrams(baseWord) {
+            let potentialAnagrams = [];
+            const baseCounter = countLetters(baseWord);
+            const potentialLengths = [baseWord.length - 1, baseWord.length + 1].filter(n => n >= 3);
+
+            potentialLengths.forEach(length => {
+                if (!processedWords[length]) return;
+                processedWords[length].forEach(word => {
+                    if (!usedWords.includes(word)) {
+                        const counter = countLetters(word);
+                        const diff = Object.keys(counter).reduce((acc, key) => acc + Math.abs((baseCounter[key] || 0) - (counter[key] || 0)), 0);
+                        if (diff <= 1) potentialAnagrams.push(word);
+                    }
+                });
+            });
+
+            return potentialAnagrams;
+        }
+
+        function countLetters(word) {
+            return word.split('').reduce((acc, char) => {
+                acc[char] = (acc[char] || 0) + 1;
+                return acc;
+            }, {});
+        }
+
+        function checkUsedWord(word) {
+            if (usedWords.includes(word)) {
+                document.getElementById('messages').innerText = "This word has already been used. Please try another.";
+                return true;
+            }
+            return false;
+        }
+
+        function checkTooShort(word) {
+            if (word.length < 3) {
+                document.getElementById('messages').innerText = "Words must be at least 3 letters.";
+                return true;
+            }
+            return false;
+        }
+
+        function checkWrongLength(word) {
+            if (Math.abs(word.length - currentWord.length) !== 1) {
+                document.getElementById('messages').innerText = "Word must have one more or fewer letters than the original.";
+                return true;
+            }
+            return false;
+        }
+
+        function checkNotRecognized(word) {
+            if (!dictionary.includes(word)) {
+                document.getElementById('messages').innerText = "Word is not in dictionary; pick another.";
+                return true;
+            }
+            return false;
+        }
+
+        function checkAllRedos(playerWord) {
+            return (
+                checkUsedWord(playerWord) ||
+                checkTooShort(playerWord) ||
+                checkWrongLength(playerWord) ||
+                checkNotRecognized(playerWord)
+            );
+        }
+
+        function chooseNextWord(difficulty) {
+            let potentialWords = getAnagrams(currentWord);
+            if (!potentialWords || potentialWords.length === 0) return null;
+
+            let choices;
+            if (difficulty === 1) {
+                // Easy: prioritize words with more potential anagrams
+                choices = potentialWords.sort((a, b) => getAnagrams(b).length - getAnagrams(a).length);
+            } else if (difficulty === 3) {
+                // Hard: prioritize words with fewer potential anagrams
+                choices = potentialWords.sort((a, b) => getAnagrams(a).length - getAnagrams(b).length);
+            } else {
+                // Medium: random choice
+                choices = [...potentialWords];
+            }
+
+            choices = choices.filter(word => !usedWords.includes(word));
+            return choices.length > 0 ? choices[0] : null;
+        }
+
+        function nextRound() {
+            const difficultyElement = document.getElementById('difficulty');
+            const difficulty = parseInt(difficultyElement.value, 10);
+            usedWords.push(currentWord);
+            currentWord = chooseNextWord(difficulty);
+            document.getElementById('currentWord').innerText = `Current word: ${currentWord}`;
+            let potentialWords = getAnagrams(currentWord);
+            if (potentialWords.length > 0 ) {
+                document.getElementById('messages').innerText = `There are ${potentialWords.length} Nearagrams.`;
+                document.getElementById('playerInput').value = ''; // Reset input field
+            } else {
+                document.getElementById('gameArea').style.display = 'none';
+                document.getElementById('messages').innerText = "Game over! There are no more Nearagrams left.";
+                isGameOver = true;
+            }
+        }
+
+        function startGame(difficulty) {
+            document.getElementById('messages').innerText = '';
+            score = 0;
+            usedWords = [];
+            document.getElementById('score').innerText = `Score: ${score}`;
+            const lengths = {1: 4, 2: 5, 3: 6};
+            const currentLength = lengths[difficulty] || 5;
+            currentWord = selectRandomWord(currentLength);
+            usedWords.push(currentWord);
+            document.getElementById('currentWord').innerText = `Current word: ${currentWord}`;
+            document.getElementById('startGame').innerText = "Restart";
+        }
+
+        function selectRandomWord(length) {
+            if (!processedWords[length] || processedWords[length].length === 0) return null;
+            return processedWords[length][Math.floor(Math.random() * processedWords[length].length)];
+        }
+
+        function getAnagrams(baseWord) {
+            let potentialAnagrams = [];
+            const baseCounter = countLetters(baseWord);
+            const potentialLengths = [baseWord.length - 1, baseWord.length + 1].filter(n => n >= 3);
+
+            potentialLengths.forEach(length => {
+                if (!processedWords[length]) return;
+                processedWords[length].forEach(word => {
+                    if (!usedWords.includes(word)) {
+                        const counter = countLetters(word);
+                        let diff = 0;
+                        for (let letter in baseCounter) {
+                            diff += Math.abs((baseCounter[letter] || 0) - (counter[letter] || 0));
+                        }
+                        for (let letter in counter) {
+                            if (!baseCounter[letter]) diff += counter[letter];
+                        }
+                        // This condition now checks for a diff of 1 for both longer and shorter words.
+                        // It assumes that a valid anagram that's one letter longer or shorter should 
+                        // only have a total letter difference of 1 to account for the extra or missing letter.
+                        if (diff === 1) {
+                            potentialAnagrams.push(word);
+                        }
+                    }
+                });
+            });
+
+            return potentialAnagrams;
+        }
+
+        function countLetters(word) {
+            return word.split('').reduce((acc, char) => {
+                acc[char] = (acc[char] || 0) + 1;
+                return acc;
+            }, {});
+        }
+        
+        document.getElementById('playerInput').addEventListener('keydown', function(event) {
+        // Check if the key pressed is 'Enter'
+        if (event.key === 'Enter') {
+            // Prevent the default action to avoid submitting a form if the input is inside one
+            event.preventDefault();
+            // Trigger the button click
+            document.getElementById('submitWord').click();
+        }
+    });
     </script>
 </body>
 </html>

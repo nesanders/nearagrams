@@ -159,8 +159,7 @@ def check_all_redos(player_word: str, current_word: str) -> bool:
         check_not_recognized(player_word)
     )
 
-# Main game loop
-def play_game(processed_words: dict[str, list[str]]):
+def start_game(processed_words):
     print(INTRO_TEXT)
     difficulty = get_difficulty()
     
@@ -170,36 +169,55 @@ def play_game(processed_words: dict[str, list[str]]):
     current_word = random.choice(processed_words[current_length])
     potential_words = get_anagrams(current_word)
     score = 0
-
-    while True:
-        print(f"\nCurrent word: {current_word}")
-        if len(potential_words) == 0:
-            print("Game over! There are no more Nearagrams left.")
-            break
-        
-        print(f"There are {len(potential_words)} Nearagrams.")
-        player_word = input("Enter an anagram (enter 'q' to quit): ").strip().lower()
-        
-        if check_give_up(player_word, potential_words):
-            break
     
-        if check_all_redos(player_word, current_word):
-            continue
-        
-        if player_word in potential_words:
-            print("Correct!")
-            score += len(player_word)
-            print(f"Your score is {score}\n")
-            USED_WORDS.append(player_word)
-            current_word = choose_next_word(player_word, difficulty)
-            USED_WORDS.append(current_word)
-            potential_words = get_anagrams(current_word)
-        else:
-            print("Not a valid Neargram. Try again.")
+    return difficulty, current_length, current_word, potential_words, score
+
+def game_round(player_word, difficulty, current_length, current_word, potential_words, score):
+    game_over = False
+    
+    print(f"\nCurrent word: {current_word}")
+    print(f"There are {len(potential_words)} Nearagrams.")
+    
+    if check_give_up(player_word, potential_words):
+        game_over = True
+
+    elif check_all_redos(player_word, current_word):
+        pass
+    
+    elif player_word in potential_words:
+        print("Correct!")
+        score += len(player_word)
+        print(f"Your score is {score}\n")
+        USED_WORDS.append(player_word)
+        current_word = choose_next_word(player_word, difficulty)
+        USED_WORDS.append(current_word)
+        potential_words = get_anagrams(current_word)
+    else:
+        print("Not a valid Neargram. Try again.")
+    
+    if len(potential_words) == 0:
+        print("Game over! There are no more Nearagrams left.")
+        game_over = True
+    
+    return difficulty, current_length, current_word, potential_words, score, game_over
+
+# Main game loop
+def play_game(processed_words: dict[str, list[str]]):
+    difficulty, current_length, current_word, potential_words, score = start_game(processed_words)
+    
+    game_over = False
+    while game_over is False:
+        player_word = input("Enter an anagram (enter 'q' to quit): ").strip().lower()
+        difficulty, current_length, current_word, potential_words, score, game_over = game_round(
+            player_word, difficulty, current_length, current_word, potential_words, score)
     
     print(f"Game over. Your score: {score}")
 
-if __name__ == "__main__":
+def main():
+    global DICTIONARY, PROCESSED_WORDS
     DICTIONARY = load_words()
     PROCESSED_WORDS = preprocess_words(DICTIONARY)
     play_game(PROCESSED_WORDS)
+
+if __name__ == "__main__":
+    main()
