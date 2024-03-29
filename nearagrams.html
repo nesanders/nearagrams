@@ -300,18 +300,21 @@
         function nextRound() {
             usedWords.push(currentWord);
             currentWord = chooseNextWord(difficulty);
-            document.getElementById('currentWord').innerText = `Current word: ${currentWord}`;
             let potentialWords = getAnagrams(currentWord);
-            document.getElementById('nearagramCount').innerText = `Nearagrams Available: ${potentialWords.length}`;
+
             if (potentialWords.length > 0 ) {
+                document.getElementById('currentWord').innerText = `Current word: ${currentWord}`;
+                document.getElementById('nearagramCount').innerText = `Nearagrams Available: ${potentialWords.length}`;
                 document.getElementById('messages').innerText = `There are ${potentialWords.length} Nearagrams.`;
                 document.getElementById('playerInput').value = ''; // Reset input field
             } else {
-                document.getElementById('gameArea').style.display = 'none';
-                document.getElementById('messages').innerText = "Game over! There are no more Nearagrams left.";
+                // Ensure the game over message is displayed in a visible location
+                document.body.innerHTML += "<div id='gameOverMessage' style='text-align: center; margin-top: 20px;'>Game over! There are no more Nearagrams left.</div>";
+                document.getElementById('gameArea').style.display = 'none'; // Hide game area if needed
                 isGameOver = true;
             }
         }
+
 
         function startGame(difficulty) {
             isGameOver = false;
